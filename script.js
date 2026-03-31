@@ -13,16 +13,57 @@ const categoryMapping = {
 async function loadProducts() {
     console.log('开始加载产品数据...');
     try {
-        console.log('尝试请求JSON文件: data/欧亚留学产品分类整理.json');
-        const response = await fetch('data/欧亚留学产品分类整理.json');
+        console.log('尝试请求JSON文件: data/product_classification_result.json');
+        const response = await fetch('data/product_classification_result.json');
         
         if (!response.ok) {
             console.error('HTTP请求失败:', response.status, response.statusText);
             throw new Error(`HTTP请求失败: ${response.status} ${response.statusText}`);
         }
         
-        allProductsData = await response.json();
-        console.log('JSON文件加载成功:', allProductsData);
+        // 获取原始数据
+        const rawData = await response.json();
+        console.log('原始JSON数据:', rawData);
+        
+        // 转换数据结构以适配前端代码
+        const transformedData = {};
+        
+        // 遍历每个分类
+        for (const category in rawData) {
+            transformedData[category] = {};
+            
+            // 遍历该分类下的所有产品
+            const products = rawData[category];
+            
+            // 按project_name对产品进行分组
+            const productGroups = {};
+            
+            products.forEach(product => {
+                const projectName = product.project_name || '未命名项目';
+                
+                if (!productGroups[projectName]) {
+                    productGroups[projectName] = {
+                        project_name: projectName,
+                        description: product.description || null,
+                        url: product.url || null,
+                        files: product.files || [],
+                        contracts: []
+                    };
+                }
+                
+                // 添加合同信息到contracts数组
+                productGroups[projectName].contracts.push({
+                    contract: product.contract || '未命名合同',
+                    price: product.price || '价格面议'
+                });
+            });
+            
+            transformedData[category] = productGroups;
+        }
+        
+        allProductsData = transformedData;
+        console.log('转换后的数据结构:', allProductsData);
+        console.log('JSON文件加载成功并完成数据转换');
         
         // 设置左侧导航点击事件
         setupSidebarNavigation();
@@ -181,7 +222,60 @@ function displayRelatedFiles(product) {
     // 合并所有资源文件
     const allFiles = [];
     
-    // 添加PDF文件
+    // 添加URL文件（新的字段结构）
+    if (product.url) {
+        // 获取文件名列表
+        const fileNames = product.files || [];
+        
+        if (fileNames.length > 0) {
+            // 为每个文件名创建一个文件对象，使用相同的URL
+            fileNames.forEach(fileName => {
+                if (fileName.trim()) {
+                    let filePath = product.url;
+                    let fileType = 'url';
+                    
+                    // 检查文件类型
+                    if (fileName.toLowerCase().includes('.pdf')) {
+                        fileType = 'pdf';
+                    } else if (fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|svg)$/)) {
+                        fileType = 'image';
+                    }
+                    
+                    allFiles.push({
+                        name: fileName.trim(),
+                        path: filePath,
+                        type: fileType
+                    });
+                }
+            });
+        } else {
+            // 如果没有文件名，使用URL本身
+            let fileName = product.url;
+            let filePath = product.url;
+            let fileType = 'url';
+            
+            // 检查文件类型
+            if (fileName.toLowerCase().includes('.pdf')) {
+                fileType = 'pdf';
+            } else if (fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|svg)$/)) {
+                fileType = 'image';
+            }
+            
+            // 提取文件名
+            if (fileName.includes('/')) {
+                const parts = fileName.split('/');
+                fileName = parts[parts.length - 1];
+            }
+            
+            allFiles.push({
+                name: fileName,
+                path: filePath,
+                type: fileType
+            });
+        }
+    }
+    
+    // 兼容旧的字段结构（PDF）
     if (product.pdf) {
         const pdfPaths = product.pdf.split('\n');
         pdfPaths.forEach(pdf => {
@@ -191,11 +285,9 @@ function displayRelatedFiles(product) {
                 
                 // 检查是否是飞书链接
                 if (pdf.includes('feishu.cn')) {
-                    // 从飞书链接中提取文件名（飞书链接的文件名通常在最后一个斜杠后）
                     const parts = pdf.split('/');
                     fileName = parts[parts.length - 1] + '.pdf';
                 } else {
-                    // 处理本地文件路径
                     fileName = pdf.replace(/\\/g, '/').split('/').pop();
                     filePath = `assets/${pdf}`;
                 }
@@ -209,7 +301,7 @@ function displayRelatedFiles(product) {
         });
     }
     
-    // 添加图片文件
+    // 兼容旧的字段结构（图片）
     if (product.image) {
         const imagePaths = product.image.split('\n');
         imagePaths.forEach(image => {
@@ -224,35 +316,84 @@ function displayRelatedFiles(product) {
     }
     
     if (allFiles.length > 0) {
-        const fileList = document.createElement('ul');
-        fileList.className = 'file-list space-y-3';
-        
-        allFiles.forEach(file => {
-            const li = document.createElement('li');
-            const link = document.createElement('a');
-            link.className = 'file-link flex items-center p-3 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700 hover-card hover:no-underline transition-all duration-300';
-            link.href = file.path;
-            link.target = '_blank';
+            // 创建表格结构
+            const table = document.createElement('table');
+            table.className = 'file-table w-full border-collapse';
             
-            // 根据文件类型选择图标
-            const iconClass = file.type === 'pdf' ? 'fa fa-file-pdf-o text-red-500' : 'fa fa-image text-blue-500';
-            link.innerHTML = `
-                <i class="${iconClass} text-xl mr-3"></i>
-                <div class="file-info">
-                    <div class="file-name font-medium text-gray-900 dark:text-gray-100">${file.name}</div>
-                    <div class="file-type text-sm text-gray-500 dark:text-gray-400">${file.type.toUpperCase()}</div>
-                </div>
+            // 创建表头
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr class="bg-gray-100 dark:bg-gray-800">
+                    <th class="border border-gray-200 dark:border-gray-700 px-4 py-2 text-left font-semibold">图标</th>
+                    <th class="border border-gray-200 dark:border-gray-700 px-4 py-2 text-left font-semibold">文件名</th>
+                    <th class="border border-gray-200 dark:border-gray-700 px-4 py-2 text-left font-semibold">文件类型</th>
+                </tr>
             `;
+            table.appendChild(thead);
             
-            li.appendChild(link);
-            fileList.appendChild(li);
-        });
-        
-        relatedFiles.innerHTML = '';
-        relatedFiles.appendChild(fileList);
-    } else {
-        relatedFiles.innerHTML = '<p class="no-files text-center text-gray-500 dark:text-gray-400 py-4">暂无该项目的相关文件。</p>';
-    }
+            // 创建表格主体
+            const tbody = document.createElement('tbody');
+            
+            allFiles.forEach(file => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors';
+                
+                // 根据文件类型选择图标
+                let iconClass, displayType;
+                switch (file.type) {
+                    case 'pdf':
+                        iconClass = 'fa fa-file-pdf-o text-red-500';
+                        displayType = 'PDF';
+                        break;
+                    case 'image':
+                        iconClass = 'fa fa-image text-blue-500';
+                        displayType = 'IMAGE';
+                        break;
+                    case 'url':
+                    default:
+                        iconClass = 'fa fa-link text-green-500';
+                        displayType = 'URL';
+                        break;
+                }
+                
+                // 创建表格单元格
+                const iconCell = document.createElement('td');
+                iconCell.className = 'border border-gray-200 dark:border-gray-700 px-4 py-2';
+                iconCell.innerHTML = `<i class="${iconClass} text-xl"></i>`;
+                
+                const nameCell = document.createElement('td');
+                nameCell.className = 'border border-gray-200 dark:border-gray-700 px-4 py-2 font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:text-primary transition-colors';
+                nameCell.textContent = file.name;
+                
+                // 添加点击事件
+                nameCell.addEventListener('click', () => {
+                    // 打开新窗口访问URL
+                    window.open(file.path, '_blank');
+                });
+                
+                const typeCell = document.createElement('td');
+                typeCell.className = 'border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-500 dark:text-gray-400';
+                typeCell.textContent = displayType;
+                
+                // 组合表格行
+                tr.appendChild(iconCell);
+                tr.appendChild(nameCell);
+                tr.appendChild(typeCell);
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+            
+            // 创建表格容器
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700';
+            tableContainer.appendChild(table);
+            
+            relatedFiles.innerHTML = '';
+            relatedFiles.appendChild(tableContainer);
+        } else {
+            relatedFiles.innerHTML = '<p class="no-files text-center text-gray-500 dark:text-gray-400 py-4">暂无该项目的相关文件。</p>';
+        }
 }
 
 // 显示报价单列表
