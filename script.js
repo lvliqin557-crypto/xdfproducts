@@ -40,14 +40,28 @@ function transformData(rawData) {
         const files = projectFiles.map(file => file['文件名']);
         const urls = projectFiles.map(file => file['文件链接URL']);
         
+        // 合并所有项目介绍
+        let mergedDescription = '';
+        projectFiles.forEach((file, index) => {
+            if (file['项目介绍']) {
+                // 如果不是第一个介绍，添加分隔符
+                if (index > 0) {
+                    mergedDescription += '\n\n---\n\n';
+                }
+                mergedDescription += file['项目介绍'];
+            }
+        });
+        
         // 创建产品对象
         transformed[category][projectName] = {
-            description: projectFiles[0]?.['项目介绍'] || '',
+            description: mergedDescription || '',
             url: urls[0] || '', // 使用第一个文件的URL作为主URL
             urls: urls, // 添加所有文件的URL列表
             files: files,
             contracts: contracts
         };
+        
+        // 不需要为"访学"项目添加默认链接，让displayRelatedFiles函数处理没有文件的情况
     });
     
     console.log('转换后的数据:', transformed);
@@ -185,14 +199,14 @@ function displayProjectIntro(product) {
         
         // 遍历每一行
         for (const line of lines) {
-            // 如果是标题行（没有空格，或者是简短的描述）
-            if (line.trim() && !line.trim().includes(' ') || line.trim().length < 10) {
+            // 检查是否是版本标题行（如【六个月】、【四个月】）
+            if (line.trim().startsWith('【') && line.trim().endsWith('】')) {
                 // 如果已经有内容，先保存当前卡片
                 if (currentTitle && currentContent) {
                     cardsHTML += `
                         <div class="service-card bg-white dark:bg-gray-800/80 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover-card mb-4">
                             <h4 class="card-title font-semibold text-primary mb-2">${currentTitle}</h4>
-                            <p class="card-content text-gray-700 dark:text-gray-300">${currentContent}</p>
+                            <div class="card-content text-gray-700 dark:text-gray-300">${currentContent}</div>
                         </div>
                     `;
                     currentContent = '';
@@ -200,8 +214,11 @@ function displayProjectIntro(product) {
                 // 设置新标题
                 currentTitle = line.trim();
             } else if (line.trim()) {
-                // 添加内容行
-                currentContent += line.trim() + ' ';
+                // 添加内容行，保留原始格式
+                currentContent += `<p>${line.trim()}</p>`;
+            } else if (line === '' && currentContent) {
+                // 保留空行作为段落分隔
+                currentContent += '<br>';
             }
         }
         
@@ -210,7 +227,7 @@ function displayProjectIntro(product) {
             cardsHTML += `
                 <div class="service-card bg-white dark:bg-gray-800/80 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover-card mb-4">
                     <h4 class="card-title font-semibold text-primary mb-2">${currentTitle}</h4>
-                    <p class="card-content text-gray-700 dark:text-gray-300">${currentContent}</p>
+                    <div class="card-content text-gray-700 dark:text-gray-300">${currentContent}</div>
                 </div>
             `;
         }
@@ -403,7 +420,12 @@ function displayRelatedFiles(product) {
             relatedFiles.innerHTML = '';
             relatedFiles.appendChild(tableContainer);
         } else {
-            relatedFiles.innerHTML = '<p class="no-files text-center text-gray-500 dark:text-gray-400 py-4">暂无该项目的相关文件。</p>';
+            // 根据产品名称显示不同的提示信息
+            let message = '暂无该项目的相关文件。';
+            if (product.name === '访学') {
+                message = '访学项目暂未上传相关文件，如有需要请联系客服获取详情。';
+            }
+            relatedFiles.innerHTML = `<p class="no-files text-center text-gray-500 dark:text-gray-400 py-4">${message}</p>`;
         }
 }
 
