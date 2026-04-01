@@ -9,12 +9,57 @@ const categoryMapping = {
     '学术辅导': '学术辅导服务产品'
 };
 
+// 将新JSON结构转换为代码期望的格式
+function transformData(rawData) {
+    // 创建一个空对象，根据实际项目类别动态添加
+    const transformed = {};
+    
+    // 遍历所有项目
+    const projects = rawData['项目数据列表'] || [];
+    projects.forEach(project => {
+        const basicInfo = project['项目基础信息'];
+        const projectFiles = project['关联项目文件'] || [];
+        const projectPrices = project['关联项目价格'] || [];
+        
+        // 提取项目关键信息
+        const projectName = basicInfo['项目名称'];
+        const category = basicInfo['项目类别'];
+        
+        // 确保类别存在
+        if (!transformed[category]) {
+            transformed[category] = {};
+        }
+        
+        // 准备合同列表
+        const contracts = projectPrices.map(price => ({
+            contract: price['合同名称'],
+            price: price['价格(元)']
+        }));
+        
+        // 准备文件信息
+        const files = projectFiles.map(file => file['文件名']);
+        const urls = projectFiles.map(file => file['文件链接URL']);
+        
+        // 创建产品对象
+        transformed[category][projectName] = {
+            description: projectFiles[0]?.['项目介绍'] || '',
+            url: urls[0] || '', // 使用第一个文件的URL作为主URL
+            urls: urls, // 添加所有文件的URL列表
+            files: files,
+            contracts: contracts
+        };
+    });
+    
+    console.log('转换后的数据:', transformed);
+    return transformed;
+}
+
 // 产品数据加载和初始化
 async function loadProducts() {
     console.log('开始加载产品数据...');
     try {
-        console.log('尝试请求JSON文件: data/product_classification_result.json');
-        const response = await fetch('data/product_classification_result.json');
+        console.log('尝试请求JSON文件: data/欧亚留学产品 4.1_项目关联结构.json');
+        const response = await fetch('data/欧亚留学产品 4.1_项目关联结构.json');
         
         if (!response.ok) {
             console.error('HTTP请求失败:', response.status, response.statusText);
@@ -25,41 +70,8 @@ async function loadProducts() {
         const rawData = await response.json();
         console.log('原始JSON数据:', rawData);
         
-        // 转换数据结构以适配前端代码
-        const transformedData = {};
-        
-        // 遍历每个分类
-        for (const category in rawData) {
-            transformedData[category] = {};
-            
-            // 遍历该分类下的所有产品
-            const products = rawData[category];
-            
-            // 按project_name对产品进行分组
-            const productGroups = {};
-            
-            products.forEach(product => {
-                const projectName = product.project_name || '未命名项目';
-                
-                if (!productGroups[projectName]) {
-                    productGroups[projectName] = {
-                        project_name: projectName,
-                        description: product.description || null,
-                        url: product.url || null,
-                        files: product.files || [],
-                        contracts: []
-                    };
-                }
-                
-                // 添加合同信息到contracts数组
-                productGroups[projectName].contracts.push({
-                    contract: product.contract || '未命名合同',
-                    price: product.price || '价格面议'
-                });
-            });
-            
-            transformedData[category] = productGroups;
-        }
+        // 将新JSON结构转换为代码期望的格式
+        const transformedData = transformData(rawData);
         
         allProductsData = transformedData;
         console.log('转换后的数据结构:', allProductsData);
@@ -108,11 +120,11 @@ function setupSidebarNavigation() {
 
 // 默认显示第一个产品
 function displayDefaultProduct() {
-    // 默认显示背景提升分类下的优选计划
-    displayProduct('留学服务', '高端合同');
+    // 默认显示留学服务分类下的普通合同
+    displayProduct('留学服务', '普通合同');
     
     // 设置默认选中项
-    const defaultItem = document.querySelector('[data-category="背景提升"][data-product="优选计划"]');
+    const defaultItem = document.querySelector('[data-category="留学服务"][data-product="普通合同"]');
     if (defaultItem) {
         defaultItem.classList.add('active');
     }
@@ -222,57 +234,56 @@ function displayRelatedFiles(product) {
     // 合并所有资源文件
     const allFiles = [];
     
-    // 添加URL文件（新的字段结构）
-    if (product.url) {
-        // 获取文件名列表
-        const fileNames = product.files || [];
+    // 添加URL文件（新的数据结构）
+    if (product.files && product.files.length > 0) {
+        // 获取文件名列表和对应的URL
+        const fileNames = product.files;
+        const urls = product.urls || [];
         
-        if (fileNames.length > 0) {
-            // 为每个文件名创建一个文件对象，使用相同的URL
-            fileNames.forEach(fileName => {
-                if (fileName.trim()) {
-                    let filePath = product.url;
-                    let fileType = 'url';
-                    
-                    // 检查文件类型
-                    if (fileName.toLowerCase().includes('.pdf')) {
-                        fileType = 'pdf';
-                    } else if (fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-                        fileType = 'image';
-                    }
-                    
-                    allFiles.push({
-                        name: fileName.trim(),
-                        path: filePath,
-                        type: fileType
-                    });
+        // 遍历所有文件
+        fileNames.forEach((fileName, index) => {
+            if (fileName.trim()) {
+                let filePath = urls[index] || product.url || '';
+                let fileType = 'url';
+                
+                // 检查文件类型
+                if (fileName.toLowerCase().includes('.pdf')) {
+                    fileType = 'pdf';
+                } else if (fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|svg)$/)) {
+                    fileType = 'image';
                 }
-            });
-        } else {
-            // 如果没有文件名，使用URL本身
-            let fileName = product.url;
-            let filePath = product.url;
-            let fileType = 'url';
-            
-            // 检查文件类型
-            if (fileName.toLowerCase().includes('.pdf')) {
-                fileType = 'pdf';
-            } else if (fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-                fileType = 'image';
+                
+                allFiles.push({
+                    name: fileName.trim(),
+                    path: filePath,
+                    type: fileType
+                });
             }
-            
-            // 提取文件名
-            if (fileName.includes('/')) {
-                const parts = fileName.split('/');
-                fileName = parts[parts.length - 1];
-            }
-            
-            allFiles.push({
-                name: fileName,
-                path: filePath,
-                type: fileType
-            });
+        });
+    } else if (product.url) {
+        // 如果没有文件名列表，但有URL，使用URL本身
+        let fileName = product.url;
+        let filePath = product.url;
+        let fileType = 'url';
+        
+        // 检查文件类型
+        if (fileName.toLowerCase().includes('.pdf')) {
+            fileType = 'pdf';
+        } else if (fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|svg)$/)) {
+            fileType = 'image';
         }
+        
+        // 提取文件名
+        if (fileName.includes('/')) {
+            const parts = fileName.split('/');
+            fileName = parts[parts.length - 1];
+        }
+        
+        allFiles.push({
+            name: fileName,
+            path: filePath,
+            type: fileType
+        });
     }
     
     // 兼容旧的字段结构（PDF）
