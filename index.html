@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新东方亚英产品报价系统</title>
+    <!-- 引入 TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- TailwindCSS 配置 -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#e31436',
+                        secondary: '#8A94A6',
+                        background: '#FFFFFF',
+                        'background-dark': '#1A1D23',
+                        card: '#F7F8FA',
+                        'card-dark': '#22252A',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                    },
+                },
+            }
+        }
+    </script>
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .hover-scale {
+                @apply transition-transform duration-200 hover:scale-105;
+            }
+            .hover-card {
+                @apply transition-all duration-300 hover:shadow-lg hover:border-primary dark:hover:border-primary/50;
+            }
+        }
+    </style>
+    <!-- 基础样式 -->
+    <style>
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* 淡入动画 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        /* 滑入动画 */
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        
+        /* 深色模式滚动条 */
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+        }
+        
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        
+        /* 产品分类列表样式 */
+        .product-categories li {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .product-categories li:hover {
+            color: #e31436;
+            padding-left: 8px;
+        }
+        
+        .product-categories li.active {
+            color: #e31436;
+            font-weight: 600;
+            border-left: 3px solid #e31436;
+            padding-left: 13px;
+        }
+        
+        /* 相关文件列表样式 */
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        /* 报价列表样式 */
+        .quote-item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        /* 报价项样式 */
+        .quote-item {
+            transition: all 0.3s ease;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 1024px) {
+            .main-container {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-gray-900 dark:bg-background-dark dark:text-gray-100 transition-colors duration-300">
+    <!-- 顶部导航 -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-all duration-300 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo 和公司名称 -->
+                <div class="flex items-center space-x-4">
+                    <div class="logo">
+                        <img src="image/logo_new.png" alt="公司Logo" class="h-10 w-auto">
+                    </div>
+                    <div class="header-title">
+                        <h1 class="company-name text-xl font-semibold text-primary">留学服务及产品系统</h1>
+                    </div>
+                </div>
+                
+                <!-- 右侧操作区 -->
+                <div class="flex items-center space-x-4">
+                    <!-- 搜索按钮 -->
+                    <button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors hover-scale">
+                        <i class="fa fa-search"></i>
+                    </button>
+                    
+                    <!-- 深色/浅色模式切换 -->
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors hover-scale">
+                        <i class="fa fa-moon-o dark:hidden"></i>
+                        <i class="fa fa-sun-o hidden dark:block"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体内容区 -->
+    <div class="main-container pt-24 pb-16 px-4 sm:px-6 lg:px-8 w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 左侧导航 -->
+            <aside class="left-sidebar lg:col-span-3 bg-white dark:bg-card-dark rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover-card">
+                <div class="sidebar-section mb-8">
+                    <h3 class="text-lg font-semibold mb-4 text-primary">留学服务系列</h3>
+                    <ul class="product-categories space-y-2">
+                        <li data-category="留学服务" data-product="普通合同" class="pl-4 border-l-3 border-transparent">普通合同</li>
+                        <li data-category="留学服务" data-product="联报合同" class="pl-4 border-l-3 border-transparent">联报合同</li>
+                        <li data-category="留学服务" data-product="高端合同" class="pl-4 border-l-3 border-transparent">高端合同</li>
+                        <li data-category="留学服务" data-product="马来西亚" class="pl-4 border-l-3 border-transparent">马来西亚</li>
+                        <li data-category="留学服务" data-product="亚英研究型硕士及博士" class="pl-4 border-l-3 border-transparent">亚英研究型硕士及博士</li>
+                        <li data-category="留学服务" data-product="中外合作办学硕士" class="pl-4 border-l-3 border-transparent">中外合作办学硕士</li>
+                        <li data-category="留学服务" data-product="中外合作办学在职提升" class="pl-4 border-l-3 border-transparent">中外合作办学在职提升</li>
+                    </ul>
+                </div>
+                <div class="sidebar-section mb-8">
+                    <h3 class="text-lg font-semibold mb-4 text-primary">背景提升系列</h3>
+                    <ul class="product-categories space-y-2">
+                        <li data-category="背景提升" data-product="优选计划" class="pl-4 border-l-3 border-transparent">优选计划</li>
+                        <li data-category="背景提升" data-product="威计划" class="pl-4 border-l-3 border-transparent">威计划</li>
+                        <li data-category="背景提升" data-product="双优计划" class="pl-4 border-l-3 border-transparent">双优计划</li>
+                        <li data-category="背景提升" data-product="职涯计划" class="pl-4 border-l-3 border-transparent">职涯计划</li>
+                        <li data-category="背景提升" data-product="来offer" class="pl-4 border-l-3 border-transparent">来offer</li>
+                        <li data-category="背景提升" data-product="校招求职" class="pl-4 border-l-3 border-transparent">校招求职</li>
+                        <li data-category="背景提升" data-product="管家计划求职" class="pl-4 border-l-3 border-transparent">管家计划求职</li>
+                        <li data-category="背景提升" data-product="证书类" class="pl-4 border-l-3 border-transparent">证书类</li>
+                        <li data-category="背景提升" data-product="顶锋计划" class="pl-4 border-l-3 border-transparent">顶锋计划</li>
+                        <li data-category="背景提升" data-product="顶锋+优才计划" class="pl-4 border-l-3 border-transparent">顶锋+优才计划</li>
+                        <li data-category="背景提升" data-product="顶锋+全球在研" class="pl-4 border-l-3 border-transparent">顶锋+全球在研</li>
+                        <li data-category="背景提升" data-product="R计划" class="pl-4 border-l-3 border-transparent">R计划</li>
+                        <li data-category="背景提升" data-product="深耕计划" class="pl-4 border-l-3 border-transparent">深耕计划</li>
+                        <li data-category="背景提升" data-product="全球在研" class="pl-4 border-l-3 border-transparent">全球在研</li>
+                        <li data-category="背景提升" data-product="集思海外科研" class="pl-4 border-l-3 border-transparent">集思海外科研</li>
+                        <li data-category="背景提升" data-product="海外在研" class="pl-4 border-l-3 border-transparent">海外在研</li>
+                        <li data-category="背景提升" data-product="定制科研" class="pl-4 border-l-3 border-transparent">定制科研</li>
+                        <li data-category="背景提升" data-product="sci" class="pl-4 border-l-3 border-transparent">sci</li>
+                        <li data-category="背景提升" data-product="ssci" class="pl-4 border-l-3 border-transparent">ssci</li>
+                        <li data-category="背景提升" data-product="博睿计划" class="pl-4 border-l-3 border-transparent">博睿计划</li>
+                        <li data-category="背景提升" data-product="访学" class="pl-4 border-l-3 border-transparent">访学</li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h3 class="text-lg font-semibold mb-4 text-primary">学术辅导系列</h3>
+                    <ul class="product-categories space-y-2">
+                        <li data-category="学术辅导" data-product="学术club" class="pl-4 border-l-3 border-transparent">学术club</li>
+                        <li data-category="学术辅导" data-product="英领同步辅导" class="pl-4 border-l-3 border-transparent">英领同步辅导</li>
+                        <li data-category="学术辅导" data-product="学术申诉" class="pl-4 border-l-3 border-transparent">学术申诉</li>
+                        <li data-category="学术辅导" data-product="灯塔计划" class="pl-4 border-l-3 border-transparent">灯塔计划</li>
+                        <li data-category="学术辅导" data-product="中外合作办学同步学术指导" class="pl-4 border-l-3 border-transparent">中外合作办学同步学术指导</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- 中间内容区 -->
+            <main class="main-content lg:col-span-6 bg-white dark:bg-card-dark rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover-card">
+                <!-- 产品标题栏 -->
+                <div class="product-header mb-6 pb-4 border-b border-gray-200 dark:border-gray-800">
+                    <h2 id="current-product-title" class="text-2xl font-bold">优选计划</h2>
+                </div>
+                
+                <!-- 产品详情区 -->
+                <div class="product-detail">
+                    <!-- 项目介绍 -->
+                    <div class="detail-section mb-8 fade-in">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fa fa-info-circle mr-2 text-primary"></i>
+                            项目介绍
+                        </h3>
+                        <div id="project-intro" class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+                            <!-- 项目介绍将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 相关文件 -->
+                    <div class="detail-section mb-8 fade-in">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fa fa-file-text-o mr-2 text-primary"></i>
+                            相关文件
+                        </h3>
+                        <div id="related-files" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 相关文件将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 项目报价 -->
+                    <div class="detail-section fade-in">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fa fa-tag mr-2 text-primary"></i>
+                            项目报价
+                        </h3>
+                        <div id="project-quote" class="mb-4">
+                            <!-- 报价列表将通过JavaScript动态加载，直接显示所有合同和价格 -->
+                        </div>
+                        <!-- 报价列表区域 -->
+                        <div id="quote-list" class="quote-list-section bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+                            <!-- 报价列表将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 右侧报价单 -->
+            <aside class="right-sidebar lg:col-span-3 bg-white dark:bg-card-dark rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover-card">
+                <div class="quote-section">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fa fa-list-alt mr-2 text-primary"></i>
+                        报价清单
+                    </h3>
+                    <div class="quote-header mb-6 pb-4 border-b border-gray-200 dark:border-gray-800">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">已选择 <span id="selected-count" class="font-semibold text-primary">0</span> 项服务</p>
+                    </div>
+                    
+                    <div class="selected-services mb-6">
+                        <h4 class="text-sm font-medium mb-3">已选服务</h4>
+                        <ul id="selected-services-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                            <!-- 已选服务将通过JavaScript动态加载 -->
+                        </ul>
+                        <p class="no-selection text-center text-gray-500 dark:text-gray-400 py-4">暂无添加服务</p>
+                    </div>
+                    
+                    <div class="quote-footer pt-6 border-t border-gray-200 dark:border-gray-800">
+                        <div class="total-price flex justify-between items-center mb-4">
+                            <span class="text-sm font-medium">总计</span>
+                            <span class="price-value text-xl font-bold text-primary" id="total-price">¥0</span>
+                        </div>
+                        <button class="generate-btn w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg shadow-md hover-scale transition-all duration-300" onclick="showQuotePreview()">
+                            生成正式报价单
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-8">
+        <div class="container w-full px-4 sm:px-6 lg:px-8">
+            <div class="footer-content grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div class="footer-logo flex flex-col items-center md:items-start">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">
+                        新东方前途出国重庆分公司
+                    </p>
+                </div>
+                <div class="footer-links flex flex-col items-center md:items-center">
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">关于我们</a>
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">服务流程</a>
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">常见问题</a>
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">联系我们</a>
+                    </div>
+                </div>
+                <div class="footer-social flex justify-center md:justify-end">
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors hover-scale">
+                            <i class="fa fa-weixin text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors hover-scale">
+                            <i class="fa fa-weibo text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors hover-scale">
+                            <i class="fa fa-linkedin text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom text-center text-sm text-gray-600 dark:text-gray-400">
+                <p>&copy; 新东方前途出国重庆分公司. 保留所有权利.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 产品详情模态框 -->
+    <div id="product-modal" class="modal fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="modal-content bg-white dark:bg-card-dark rounded-xl p-6 max-w-2xl w-full mx-4 border border-gray-200 dark:border-gray-800 shadow-xl">
+            <span class="close-btn absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer text-xl">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    
+    <!-- 报价单预览模态框 -->
+    <div id="quote-preview-modal" class="modal fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="modal-content bg-white dark:bg-card-dark rounded-xl p-6 max-w-3xl w-full mx-4 border border-gray-200 dark:border-gray-800 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">报价单预览</h2>
+                <span class="close-btn text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer text-xl" onclick="closeQuotePreview()">&times;</span>
+            </div>
+            <div id="quote-preview-body"></div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" onclick="closeQuotePreview()">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 移除报价单模态框，改为直接在页面下方显示报价清单 -->
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+    
+    <!-- 主题切换脚本 -->
+    <script>
+        // 深色/浅色模式切换
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        
+        // 初始化主题
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+        
+        // 切换主题
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            
+            if (html.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+        });
+        
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!('theme' in localStorage)) {
+                if (e.matches) {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
+            }
+        });
+        
+        // 添加滚动监听，导航栏样式变化
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('header');
+            if (window.scrollY > 10) {
+                nav.classList.add('shadow-md');
+            } else {
+                nav.classList.remove('shadow-md');
+            }
+        });
+    </script>
+    
+    <!-- 报价单导出脚本 -->
+    <script src="export_quote.js"></script>
+</body>
+</html>
